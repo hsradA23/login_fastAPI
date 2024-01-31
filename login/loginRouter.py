@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, status, Request , Response, Depends
@@ -85,6 +86,7 @@ def handle_reset(userData: ResetPasswordModel, response: Response):
         
         # Current details are valid, Changing password
         user.password = get_passhash(userData.new_password)
+        user.password_changed = datetime.utcnow()
         session.add(user)
         session.commit()
         return {'detail' : 'Password updated successfully'}
