@@ -7,13 +7,13 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 from jwt.exceptions import ExpiredSignatureError, InvalidSignatureError
 
-from database.db_utils import get_postges_engine, get_sqlite_engine, create_db_and_tables, get_passhash
+from database.utils import get_postges_engine, get_sqlite_engine, create_db_and_tables, get_passhash
 from .models import Users, LoginLogs, ResetPasswordModel
 from .jwt_utils import generate_jwt, get_playload_from_token
 
 login_router = APIRouter()
-# engine = get_sqlite_engine()
-engine = get_postges_engine()
+engine = get_sqlite_engine()
+# engine = get_postges_engine()
 create_db_and_tables(engine=engine)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')

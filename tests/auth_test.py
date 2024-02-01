@@ -7,13 +7,15 @@ from random import choices
 from string import ascii_letters
 
 uname = ''.join(choices(ascii_letters, k=10))
+passw = ''.join(choices(ascii_letters, k=10))
+new_passw = ''.join(choices(ascii_letters, k=10))
 
 def test_user_creation():
     url = "http://localhost:8000/auth/register"
 
     payload = json.dumps({
     "username":uname,
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -28,7 +30,7 @@ def test_duplicate_user_creation():
 
     payload = json.dumps({
     "username": uname,
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -43,7 +45,7 @@ def test_valid_user_login():
 
     payload = json.dumps({
     "username":uname,
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -74,7 +76,7 @@ def test_incorrect_user_login():
 
     payload = json.dumps({
     "username":uname[:-1],
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -89,7 +91,7 @@ def test_valid_jwt_renew():
 
     payload = json.dumps({
     "username":uname,
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -113,7 +115,7 @@ def test_invalid_jwt_renew():
 
     payload = json.dumps({
     "username":uname,
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -138,7 +140,7 @@ def test_no_jwt_renew():
 
     payload = json.dumps({
     "username":uname,
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -160,8 +162,8 @@ def test_reset_password():
 
     payload = json.dumps({
     "username": uname,
-    "password": '1234',
-    "new_password": "4321"
+    "password": passw,
+    "new_password": new_passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -173,7 +175,7 @@ def test_reset_password():
 
     payload = json.dumps({
     "username":uname,
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -187,7 +189,7 @@ def test_reset_password():
 
     payload = json.dumps({
     "username":uname,
-    "password": "4321"
+    "password": new_passw
     })
 
     response = requests.request("POST", url, headers=headers, data=payload)
@@ -202,8 +204,8 @@ def test_reset_password_invalid_pass():
 
     payload = json.dumps({
     "username": uname,
-    "password": '1234',
-    "new_password": "4321"
+    "password": passw,
+    "new_password": new_passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -217,8 +219,8 @@ def test_reset_password_invalid_username():
 
     payload = json.dumps({
     "username": uname[:-1],
-    "password": '1234',
-    "new_password": "4321"
+    "password": passw,
+    "new_password": new_passw
     })
     headers = {
     'Content-Type': 'application/json'
@@ -231,7 +233,7 @@ def test_user_locks():
 
     payload = json.dumps({
     "username":uname,
-    "password": "1234"
+    "password": passw
     })
     headers = {
     'Content-Type': 'application/json'
