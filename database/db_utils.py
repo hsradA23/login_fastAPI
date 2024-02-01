@@ -15,8 +15,7 @@ def get_sqlite_engine():
 
 
 def get_postges_engine():
-    connect_args = {"check_same_thread": False}
-    engine = create_engine(environ['POSTGRES_URL'], echo=True, connect_args=connect_args)
+    engine = create_engine(environ['POSTGRES_URL'], echo=True)
     return engine
 
 
