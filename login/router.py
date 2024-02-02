@@ -27,12 +27,11 @@ def handle_login(userData: UserData, response: Response, request: Request):
         # User does not exist
         if not user:
             response.status_code = status.HTTP_404_NOT_FOUND
-            return {'detail': "Username not found" }
+            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
         
         #User is locked
         if user.is_locked():
-            response.status_code = status.HTTP_403_FORBIDDEN
-            return {'detail': "Your account has been locked due to multiple failed login attempts" }
+            return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is locked due to multiple invalid login attempts')
         
         # Password incorrect
         if (user.password != get_passhash(userData.password)):
@@ -41,8 +40,8 @@ def handle_login(userData: UserData, response: Response, request: Request):
             session.commit()
             remaining_attempts = user.remaining_attempts()
 
-            response.status_code = status.HTTP_403_FORBIDDEN
-            return {'detail' : f'Incorrect password, you have {remaining_attempts} attempt{"" if remaining_attempts == 1 else "s" } left.'}
+            return HTTPException(detail=f'Incorrect password, you have {remaining_attempts} attempt{"" if remaining_attempts == 1 else "s" } left.',
+                                 status_code=status.HTTP_403_FORBIDDEN)
 
         # Checking if password was changed recently
         if user.password_change_needed():
@@ -77,18 +76,17 @@ def handle_reset(userData: ResetPasswordModel, response: Response):
         user = users.first()
         # Username is incorrect
         if not user:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return {'detail': "Username not found" }
+            return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Username not found')
         
         #User is locked
         if user.is_locked():
-            response.status_code = status.HTTP_403_FORBIDDEN
-            return {'detail': "Your account has been locked due to multiple failed login attempts" }
+            return HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail='Your account has been locked due to multiple failed login attempts')
         
         # Password incorrect
         if (user.password != get_passhash(userData.password)):
-            response.status_code = status.HTTP_403_FORBIDDEN
-            return {'detail' : 'Incorrect password'}
+            return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Incorrect Password')
+        
         
         # Current details are valid, Changing password
         user.password = get_passhash(userData.new_password)
@@ -104,8 +102,7 @@ def handle_register(userData: UserData, response: Response):
         # Check if user already exists
         user = session.exec(select(User).where(User.username == userData.username)).first()
         if user:
-            response.status_code = status.HTTP_409_CONFLICT
-            return {'detail':'Username already taken'}
+            return HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Username already taken')
 
         user = User(username=userData.username, password=get_passhash(userData.password))
         session.add(user)
@@ -122,11 +119,9 @@ def refresh_token(token: Annotated[str, Depends(oauth2_scheme)], response:Respon
     try:
         token_payload = get_playload_from_token(token)
     except ExpiredSignatureError:
-        response.status_code = status.HTTP_403_FORBIDDEN
-        return {'detail' : 'The login token has expired.'}
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='The login token has expired.')
     except:
-        response.status_code = status.HTTP_403_FORBIDDEN
-        return {'detail' : 'The login token is not valid'}
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='The login token is not valid')
 
     return {'token':generate_jwt(username=token_payload['sub'])}
 
@@ -140,10 +135,8 @@ def secure_endpoint(token: Annotated[str, Depends(oauth2_scheme)], response : Re
     try:
         get_playload_from_token(token)
     except ExpiredSignatureError:
-        response.status_code = status.HTTP_403_FORBIDDEN
-        return {'detail' : 'The login token has expired. You need to log in again.'}
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='The login token has expired. You need to log in again.')
     except InvalidSignatureError:
-        response.status_code = status.HTTP_403_FORBIDDEN
-        return {'detail' : 'The login session is invalid. You need to log in again.'}
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='The login session is invalid. You need to log in again.')
 
     return 'Logged In'
