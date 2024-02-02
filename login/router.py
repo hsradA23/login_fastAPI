@@ -7,43 +7,54 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 from jwt.exceptions import ExpiredSignatureError, InvalidSignatureError
 
-from database.utils import get_postges_engine, get_sqlite_engine, create_db_and_tables, get_passhash
+from database.utils import get_passhash
+from database.engine import engine
 from models.auth import User, UserData, LoginLogs, LoginLogsCreate, ResetPasswordModel
 from .jwt_utils import generate_jwt, get_playload_from_token
 
 login_router = APIRouter()
-engine = get_sqlite_engine()
-# engine = get_postges_engine()
-create_db_and_tables(engine=engine)
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 
-@login_router.post('/login')
-def handle_login(userData: UserData, response: Response, request: Request):
+def get_current_user(userData: UserData):
     with Session(engine) as session:
         users = session.exec(select(User).where(User.username == userData.username))
         user = users.first()
 
         # User does not exist
         if not user:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
         
         #User is locked
         if user.is_locked():
-            return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is locked due to multiple invalid login attempts')
-        
-        # Password incorrect
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is locked due to multiple invalid login attempts')
+
+        return user
+
+def validate_user_login(user: Annotated[User, Depends(get_current_user)], userData: UserData ):
+    with Session(engine) as session:
+        # Password Incorrect
         if (user.password != get_passhash(userData.password)):
             user.failed_attempts += 1
             session.add(user)
             session.commit()
             remaining_attempts = user.remaining_attempts()
 
-            return HTTPException(detail=f'Incorrect password, you have {remaining_attempts} attempt{"" if remaining_attempts == 1 else "s" } left.',
-                                 status_code=status.HTTP_403_FORBIDDEN)
+            raise HTTPException(detail=f'Incorrect password, you have {remaining_attempts} attempt{"" if remaining_attempts == 1 else "s" } left.',
+                                    status_code=status.HTTP_403_FORBIDDEN)
+        return user
 
-        # Checking if password was changed recently
+
+def validate_user_reset_pass(user: Annotated[User, Depends(get_current_user)], userData: UserData ):
+    with Session(engine) as session:
+        # Password Incorrect
+        if (user.password != get_passhash(userData.password)):
+            return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Incorrect Password')
+        return user
+
+
+@login_router.post('/login')
+def handle_login(user: Annotated[User, Depends(validate_user_login)], request: Request ):
+    with Session(engine) as session:
         if user.password_change_needed():
             return RedirectResponse('reset_password', status_code=status.HTTP_303_SEE_OTHER) 
 
@@ -70,24 +81,8 @@ def get_reset():
     return 'RESET PAGE HERE'
 
 @login_router.post('/reset_password')
-def handle_reset(userData: ResetPasswordModel, response: Response):
+def handle_reset(userData: ResetPasswordModel,user: Annotated[User, Depends(validate_user_reset_pass)]):
     with Session(engine) as session:
-        users = session.exec(select(User).where(User.username == userData.username))
-        user = users.first()
-        # Username is incorrect
-        if not user:
-            return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Username not found')
-        
-        #User is locked
-        if user.is_locked():
-            return HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail='Your account has been locked due to multiple failed login attempts')
-        
-        # Password incorrect
-        if (user.password != get_passhash(userData.password)):
-            return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Incorrect Password')
-        
-        
         # Current details are valid, Changing password
         user.password = get_passhash(userData.new_password)
         user.password_changed = datetime.utcnow()
