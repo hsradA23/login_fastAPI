@@ -1,14 +1,14 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, status, Request , Response, Depends
+from fastapi import APIRouter, status, Request , Response, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 from jwt.exceptions import ExpiredSignatureError, InvalidSignatureError
 
 from database.utils import get_postges_engine, get_sqlite_engine, create_db_and_tables, get_passhash
-from .models import Users, LoginLogs, ResetPasswordModel
+from models.auth import User, UserData, LoginLogs, LoginLogsCreate, ResetPasswordModel
 from .jwt_utils import generate_jwt, get_playload_from_token
 
 login_router = APIRouter()
@@ -19,9 +19,9 @@ create_db_and_tables(engine=engine)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 
 @login_router.post('/login')
-def handle_login(userData: Users, response: Response, request: Request):
+def handle_login(userData: UserData, response: Response, request: Request):
     with Session(engine) as session:
-        users = session.exec(select(Users).where(Users.username == userData.username))
+        users = session.exec(select(User).where(User.username == userData.username))
         user = users.first()
 
         # User does not exist
@@ -53,7 +53,13 @@ def handle_login(userData: Users, response: Response, request: Request):
             user.failed_attempts = 0
             session.add(user)
 
-        login = LoginLogs(user_id=user.id, ip=request.client.host)
+        # Checks if the user IP is valid
+        try:
+            login = LoginLogs(user_id=user.id, ip=request.client.host )
+        except:
+            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+
+        login = LoginLogs.model_validate(login)
         session.add(login)
         session.commit()
 
@@ -67,7 +73,7 @@ def get_reset():
 @login_router.post('/reset_password')
 def handle_reset(userData: ResetPasswordModel, response: Response):
     with Session(engine) as session:
-        users = session.exec(select(Users).where(Users.username == userData.username))
+        users = session.exec(select(User).where(User.username == userData.username))
         user = users.first()
         # Username is incorrect
         if not user:
@@ -93,16 +99,16 @@ def handle_reset(userData: ResetPasswordModel, response: Response):
 
 
 @login_router.post('/register')
-def handle_register(userData: Users, response: Response):
+def handle_register(userData: UserData, response: Response):
     with Session(engine) as session:
         # Check if user already exists
-        user = session.exec(select(Users).where(Users.username == userData.username)).first()
+        user = session.exec(select(User).where(User.username == userData.username)).first()
         if user:
             response.status_code = status.HTTP_409_CONFLICT
             return {'detail':'Username already taken'}
 
-        userData.password = get_passhash(userData.password)
-        session.add(userData)
+        user = User(username=userData.username, password=get_passhash(userData.password))
+        session.add(user)
         session.commit()
         response.status_code = status.HTTP_201_CREATED
         return {'detail':'User created successfully, Go to the login page'}
