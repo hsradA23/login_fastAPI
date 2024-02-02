@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from login.router import login_router
+from apps.login.router import login_router
 import uvicorn
 from os import environ
 

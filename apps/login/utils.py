@@ -1,4 +1,4 @@
-from login.jwt_utils import get_playload_from_token
+from .jwt_utils import get_playload_from_token
 from models.auth import User, UserData
 from sqlmodel import Session, select
 from fastapi import HTTPException, status, Depends
