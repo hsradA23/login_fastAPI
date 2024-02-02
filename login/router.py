@@ -55,7 +55,7 @@ def handle_login(userData: UserData, response: Response, request: Request):
 
         # Checks if the user IP is valid
         try:
-            login = LoginLogs(user_id=user.id, ip=request.client.host )
+            login = LoginLogsCreate(user_id=user.id, ip=request.client.host )
         except:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
