@@ -29,7 +29,7 @@ def handle_login(user: Annotated[User, Depends(get_validated_user)], request: Re
 
         # Checks if the user IP is valid
         try:
-            login = LoginLogsCreate(user_id=user.id, ip=request.client.host )
+            login = LoginLogsCreate(user_id=user.id, ip=request.client.host)
         except:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
@@ -66,7 +66,7 @@ def handle_register(userData: UserData, response: Response):
         user = User(username=userData.username, password=get_passhash(userData.password))
         session.add(user)
         session.commit()
-        response.status_code = status.HTTP_201_CREATED
+        response.status_code = status.HTTP_200_OK
         return {'detail':'User created successfully, Go to the login page'}
 
 
