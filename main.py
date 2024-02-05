@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from apps.login.router import login_router
 import uvicorn
+import logging
 from os import environ
 
 from middleware.logging import LoggingMiddleware
 
 if environ.get('JWT_SECRET', ''):
-    print('Environment variables loaded.')
+    logging.info('Environment variables loaded.')
 else:
-    print('Environment variables were not loaded, using defaults.')
+    logging.warning('Environment variables were not loaded, using defaults.')
 
 
 
