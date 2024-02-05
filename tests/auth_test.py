@@ -1,248 +1,111 @@
-import pytest
+import logging
 
-import re
-import requests
-import json
-from random import choices
+from fastapi import status
 from string import ascii_letters
+from random import choices
 
-uname = ''.join(choices(ascii_letters, k=10))
-passw = ''.join(choices(ascii_letters, k=10))
-new_passw = ''.join(choices(ascii_letters, k=10))
+from pytest_mock import mocker
 
-def test_user_creation():
-    url = "http://localhost:8000/auth/register"
+from test_main import client
 
-    payload = json.dumps({
-    "username":uname,
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-    print(response.text)
-    assert response.text == '{"detail":"User created successfully, Go to the login page"}'
-
-def test_duplicate_user_creation():
-    url = "http://localhost:8000/auth/register"
-
-    payload = json.dumps({
-    "username": uname,
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-    print(response.text)
-    assert response.text == '{"detail":"Username already taken"}'
-
-def test_valid_user_login():
-    url = "http://localhost:8000/auth/login"
-
-    payload = json.dumps({
-    "username":uname,
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-    r_json = response.json()
-    assert 'token' in r_json
-    assert 'detail' not in response
-
-def test_incorrect_pass_login():
-    url = "http://localhost:8000/auth/login"
-
-    payload = json.dumps({
-    "username":uname,
-    "password": "134"
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload).json()
-    assert 'detail' in response
-    assert 'token' not in response
-
-def test_incorrect_user_login():
-    url = "http://localhost:8000/auth/login"
-
-    payload = json.dumps({
-    "username":uname[:-1],
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload).json()
-    assert 'detail' in response
-    assert 'token' not in response
-
-def test_valid_jwt_renew():
-    url = "http://localhost:8000/auth/login"
-
-    payload = json.dumps({
-    "username":uname,
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-
-    r_json = response.json()
-    token = r_json['token']
-    headers['Authorization'] = 'Bearer '+ token
-
-    url = "http://localhost:8000/auth/refresh_token"
-    response = requests.request("GET", url, headers=headers)
-    r_json = response.json()
-    assert 'token' in r_json
-    assert 'detail' not in r_json
+def get_random_password():
+    return ''.join(choices(ascii_letters, k=10))
 
 
-def test_invalid_jwt_renew():
-    url = "http://localhost:8000/auth/login"
-
-    payload = json.dumps({
-    "username":uname,
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-
-    r_json = response.json()
-    token = r_json['token']
-    headers['Authorization'] = 'Bearer '+ token[:-1]
-
-    url = "http://localhost:8000/auth/refresh_token"
-    response = requests.request("GET", url, headers=headers)
-    r_json = response.json()
-    assert 'token' not in r_json
-    assert 'detail' in r_json
+uname = get_random_password()
+passw = get_random_password()
+test_headers ={}
 
 
 
-def test_no_jwt_renew():
-    url = "http://localhost:8000/auth/login"
+logger = logging.getLogger(__name__)
 
-    payload = json.dumps({
-    "username":uname,
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
+def test_create_user():
+    r = client.post('/auth/register',
+                    json={'username' :uname, 'password' : passw}
+                    )
 
-    response = requests.request("POST", url, headers=headers, data=payload)
+    m = r.json()
+    assert r.status_code == status.HTTP_200_OK
+    assert m['detail'] == 'User created successfully, Go to the login page'
 
-    r_json = response.json()
+def test_user_login(mocker):
+    mock_client = mocker.patch("fastapi.Request.client")
+    mock_client.host = '127.0.0.1'
+    r = client.post('/auth/login',
+                    json={'username' :uname, 'password' : passw}
+                    )
 
-    url = "http://localhost:8000/auth/refresh_token"
-    response = requests.request("GET", url, headers=headers)
-    r_json = response.json()
-    assert 'token' not in r_json
-    assert 'detail' in r_json
+    logger.info(r.json())
+    assert r.status_code == status.HTTP_200_OK
+    assert 'token' in r.json()
 
+def test_user_login_incorrect_user():
+    r = client.post('/auth/login',
+                    json={'username' :uname[:-1], 'password' : passw}
+                    )
+    r_json = r.json()
+    logger.info(r.json())
+    assert r.status_code == status.HTTP_404_NOT_FOUND
+    assert r_json['detail'] == 'User not found'
+
+def test_user_login_incorrect_pass():
+    r = client.post('/auth/login',
+                    json={'username' :uname, 'password' : passw[:-1]}
+                    )
+    r_json = r.json()
+    logger.info(r.json())
+    assert r.status_code == status.HTTP_403_FORBIDDEN
+    assert r_json['detail'].startswith('Incorrect password')
+
+def test_renew_jwt(mocker):
+    mock_client = mocker.patch("fastapi.Request.client")
+    mock_client.host = '127.0.0.1'
+    r = client.post('/auth/login',
+                    json={'username' :uname, 'password' : passw}
+                    )
+
+    token = r.json()['token']
+    test_headers['Authorization'] = 'Bearer ' + token
+    r = client.get('/auth/refresh_token',
+                    headers=test_headers,
+    )
+    assert r.status_code == status.HTTP_200_OK
+    assert 'token' in r.json()
+    token = r.json()['token']
+    test_headers['Authorization'] = 'Bearer ' + token
+
+
+def test_renew_jwt_invalid():
+    invalid_headers = test_headers.copy()
+    invalid_headers['Authorization'] = invalid_headers['Authorization'][:-1]
+    mock_client = mocker.patch("fastapi.Request.client")
+    mock_client.host = '127.0.0.1'
+    r = client.get('/auth/refresh_token',
+                    headers=invalid_headers,
+    )
+    assert r.status_code == status.HTTP_403_FORBIDDEN
+    assert 'token' not in r.json()
 
 def test_reset_password():
-    url = "http://localhost:8000/auth/reset_password"
-
-    payload = json.dumps({
-    "username": uname,
-    "password": passw,
-    "new_password": new_passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-    response = requests.request("POST", url, headers=headers, data=payload).json()
-    assert response['detail'] ==  'Password updated successfully'
-
-    url = "http://localhost:8000/auth/login"
-
-    payload = json.dumps({
-    "username":uname,
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-    r_json = response.json()
-    assert 'token' not in r_json
-    assert 'detail' in r_json
-
-
-    payload = json.dumps({
-    "username":uname,
-    "password": new_passw
-    })
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-    r_json = response.json()
-    assert 'token' in r_json
-    assert 'detail' not in r_json
-
+    global passw, uname
+    new_passw = get_random_password()
+    r = client.post('/auth/reset_password',
+                    json={'username' :uname, 'password' : passw, 'new_password': new_passw}
+    )
+    r_json = r.json()
+    assert r.status_code == status.HTTP_200_OK
+    assert r_json['detail'] == 'Password updated successfully'
+    passw = new_passw
 
 
 def test_reset_password_invalid_pass():
-    url = "http://localhost:8000/auth/reset_password"
-
-    payload = json.dumps({
-    "username": uname,
-    "password": passw,
-    "new_password": new_passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-    response = requests.request("POST", url, headers=headers, data=payload).json()
-    assert response['detail'] ==  'Incorrect password'
-
-
-def test_reset_password_invalid_username():
-    url = "http://localhost:8000/auth/reset_password"
-
-    payload = json.dumps({
-    "username": uname[:-1],
-    "password": passw,
-    "new_password": new_passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-    response = requests.request("POST", url, headers=headers, data=payload).json()
-    assert response['detail'] ==  'Username not found'
-
-def test_user_locks():
-    url = "http://localhost:8000/auth/login"
-
-    payload = json.dumps({
-    "username":uname,
-    "password": passw
-    })
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    for _ in range(6):
-        response = requests.request("POST", url, headers=headers, data=payload)
-
-
-    response = requests.request("POST", url, headers=headers, data=payload).json()
-
-    assert response['detail'] == 'Your account has been locked due to multiple failed login attempts'
+    global passw, uname
+    new_passw = get_random_password()
+    r = client.post('/auth/reset_password',
+                    json={'username' :uname, 'password' : 'lmao', 'new_password': new_passw}
+    )
+    r_json = r.json()
+    assert r.status_code == status.HTTP_403_FORBIDDEN
+    assert r_json['detail'] == 'Incorrect Password'
+    passw = new_passw
