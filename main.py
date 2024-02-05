@@ -18,4 +18,4 @@ app.add_middleware(LoggingMiddleware)
 app.include_router(login_router, prefix='/auth')
 
 if __name__ == "__main__":
-    uvicorn.run(app=app, host='0.0.0.0', port=8000)
+    uvicorn.run(app=app, host='0.0.0.0', port=8000, log_config='log_conf.yaml')
