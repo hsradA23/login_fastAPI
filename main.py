@@ -3,6 +3,8 @@ from apps.login.router import login_router
 import uvicorn
 from os import environ
 
+from middleware.logging import LoggingMiddleware
+
 if environ.get('JWT_SECRET', ''):
     print('Environment variables loaded.')
 else:
@@ -11,6 +13,8 @@ else:
 
 
 app = FastAPI()
+app.add_middleware(LoggingMiddleware)
+
 app.include_router(login_router, prefix='/auth')
 
 if __name__ == "__main__":
