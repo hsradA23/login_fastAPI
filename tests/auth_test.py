@@ -7,29 +7,16 @@ from random import choices
 from pytest_mock import mocker
 
 from test_main import client
+from tests.utils import create_user
 
 def get_random_password():
     return ''.join(choices(ascii_letters, k=10))
 
 
-uname = get_random_password()
-passw = get_random_password()
 test_headers ={}
 
-
-
+uname,passw = create_user()
 logger = logging.getLogger(__name__)
-
-def test_create_user(mocker):
-    mock_client = mocker.patch("fastapi.Request.client")
-    mock_client.host = '127.0.0.1'
-    r = client.post('/auth/register',
-                    json={'username' :uname, 'password' : passw}
-                    )
-
-    m = r.json()
-    assert r.status_code == status.HTTP_200_OK
-    assert m['detail'] == 'User created successfully, Go to the login page'
 
 def test_user_login(mocker):
     mock_client = mocker.patch("fastapi.Request.client")

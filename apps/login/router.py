@@ -58,21 +58,6 @@ def handle_reset(userInput: ResetPasswordModel,
         return {'detail' : 'Password updated successfully'}
 
 
-@login_router.post('/register')
-def handle_register(userData: UserData, response: Response):
-    with Session(engine) as session:
-        # Check if user already exists
-        user = session.exec(select(User).where(User.username == userData.username)).first()
-        if user:
-            return HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Username already taken')
-
-        user = User(username=userData.username, password=get_passhash(userData.password))
-        session.add(user)
-        session.commit()
-        response.status_code = status.HTTP_200_OK
-        return {'detail':'User created successfully, Go to the login page'}
-
-
 @login_router.get('/refresh_token')
 def refresh_token(data: Annotated[str, Depends(get_token_data)], response:Response):
     '''
