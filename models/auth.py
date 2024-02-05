@@ -40,5 +40,6 @@ class LoginLogsCreate(SQLModel):
 class LoginLogs(LoginLogsCreate, table=True):
     id: Optional[int] = Field(primary_key=True, default=None)
 
-class ResetPasswordModel(UserData, SQLModel, table=False):
+class ResetPasswordModel(BaseModel):
+    password : str
     new_password : str

@@ -45,10 +45,13 @@ def get_reset():
     return 'RESET PAGE HERE'
 
 @login_router.post('/reset_password')
-def handle_reset(userData: ResetPasswordModel,user: Annotated[User, Depends(get_validated_user_resetpass)]):
+def handle_reset(userInput: ResetPasswordModel,
+                  user : Annotated[User, Depends(get_loggedin_user)]):
     with Session(engine) as session:
+        if get_passhash(userInput.password) != user.password:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Incorrect password')
         # Current details are valid, Changing password
-        user.password = get_passhash(userData.new_password)
+        user.password = get_passhash(userInput.new_password)
         user.password_changed = datetime.utcnow()
         session.add(user)
         session.commit()
