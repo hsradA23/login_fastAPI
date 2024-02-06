@@ -9,7 +9,7 @@ from database.utils import get_passhash
 from database.engine import engine
 from models.auth import User, UserData, LoginLogs, LoginLogsCreate, ResetPasswordModel
 from .jwt_utils import generate_jwt
-from .utils import get_token_data, get_validated_user, get_validated_user_resetpass, get_loggedin_user
+from .utils import get_token_data, get_validated_user, get_loggedin_user
 
 from fastapi.security import OAuth2PasswordBearer
 

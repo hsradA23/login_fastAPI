@@ -11,7 +11,7 @@ from database.engine import engine
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 
-def __get_current_user(userData: UserData):
+def get_validated_user(userData: UserData):
     with Session(engine) as session:
         users = session.exec(select(User).where(User.username == userData.username))
         user = users.first()
@@ -24,10 +24,6 @@ def __get_current_user(userData: UserData):
         if user.is_locked():
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is locked due to multiple invalid login attempts')
 
-        return user
-
-def get_validated_user(user: Annotated[User, Depends(__get_current_user)], userData: UserData ):
-    with Session(engine) as session:
         # Password Incorrect
         if (user.password != get_passhash(userData.password)):
             user.failed_attempts += 1
