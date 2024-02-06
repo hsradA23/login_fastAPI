@@ -40,13 +40,6 @@ def get_validated_user(user: Annotated[User, Depends(__get_current_user)], userD
         return user
 
 
-def get_validated_user_resetpass(user: Annotated[User, Depends(__get_current_user)], userData: UserData ):
-    with Session(engine) as session:
-        # Password Incorrect
-        if (user.password != get_passhash(userData.password)):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Incorrect Password')
-        return user
-
 def get_token_data(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         data = get_playload_from_token(token)
