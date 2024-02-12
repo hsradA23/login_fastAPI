@@ -5,3 +5,4 @@ export POSTGRES_URL=postgresql://postgres:1234@localhost/template1
 export JWT_SECRET=secret
 export JWT_EXPIRATION_MIN=15
 export MAX_PASSWORD_MONTHS=6
+export INCORRECT_LOGIN_TIMEOUT_SECONDS=60

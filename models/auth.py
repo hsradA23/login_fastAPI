@@ -1,11 +1,12 @@
-from sqlmodel import SQLModel, Field, AutoString
+from sqlmodel import SQLModel, Field
 from pydantic import BaseModel, IPvAnyAddress, BaseModel, field_validator
-from typing import Any, Dict, Optional, Tuple
-from datetime import datetime
+from typing import Optional
+from datetime import datetime, timedelta
 from os import environ
 
 MAX_INCORRECT_ATTEMPTS = int(environ.get('MAX_INCORRECT_ATTEMPTS', '5'))
 MAX_PASSWORD_MONTHS = int(environ.get('MAX_PASSWORD_MONTHS', '6'))
+INCORRECT_LOGIN_TIMEOUT_SECONDS = int(environ.get('INCORRECT_LOGIN_TIMEOUT_SECONDS ', '10'))
 
 class UserData(BaseModel):
     username: str
@@ -15,9 +16,13 @@ class User(UserData, SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     password_changed: datetime = Field(default=datetime.utcnow(), nullable=False)
     failed_attempts: int = Field(default=0)
+    last_failed_attempt: datetime = Field(default=None , nullable=True)
 
     def is_locked(self):
-        return self.failed_attempts >= MAX_INCORRECT_ATTEMPTS
+        if self.last_failed_attempt:
+            return datetime.utcnow() - self.last_failed_attempt < timedelta(seconds=INCORRECT_LOGIN_TIMEOUT_SECONDS)
+        else:
+            return False
 
     def remaining_attempts(self):
         return MAX_INCORRECT_ATTEMPTS - self.failed_attempts + 1

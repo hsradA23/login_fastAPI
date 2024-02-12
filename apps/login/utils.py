@@ -1,5 +1,6 @@
 from .jwt_utils import get_playload_from_token
 from models.auth import User, UserData
+from datetime import datetime
 from sqlmodel import Session, select
 from fastapi import HTTPException, status, Depends
 from typing import Annotated
@@ -22,17 +23,17 @@ def get_validated_user(userData: UserData):
         
         #User is locked
         if user.is_locked():
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is locked due to multiple invalid login attempts')
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is temporarily locked.')
 
         # Password Incorrect
         if (user.password != get_passhash(userData.password)):
-            user.failed_attempts += 1
+            user.last_failed_attempt = datetime.utcnow()
             session.add(user)
             session.commit()
             remaining_attempts = user.remaining_attempts()
 
-            raise HTTPException(detail=f'Incorrect password, you have {remaining_attempts} attempt{"" if remaining_attempts == 1 else "s" } left.',
-                                    status_code=status.HTTP_403_FORBIDDEN)
+            raise HTTPException(detail='Account temporarily locked.', status_code=status.HTTP_403_FORBIDDEN)
+
         return user
 
 

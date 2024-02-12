@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, status, Request , Response, Depends, HTTPException
 from fastapi.responses import RedirectResponse
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from database.utils import get_passhash
 from database.engine import engine

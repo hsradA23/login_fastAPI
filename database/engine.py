@@ -1,11 +1,12 @@
 from sqlmodel import SQLModel, create_engine
 from os import environ
+from models.auth import User, LoginLogs # Needs to be here so that the tables are created
 
 def __get_sqlite_engine():
     sqlite_file_name = "database.db"
     sqlite_url = f"sqlite:///{sqlite_file_name}"
     connect_args = {"check_same_thread": False}
-    engine = create_engine(sqlite_url, connect_args=connect_args)
+    engine = create_engine(sqlite_url, connect_args=connect_args, echo=True)
     return engine
 
 
@@ -19,5 +20,5 @@ def __create_db_and_tables(engine):
 
 
 engine = __get_sqlite_engine()
-# engine = get_postges_engine()
+# engine = __get_postges_engine()
 __create_db_and_tables(engine=engine)

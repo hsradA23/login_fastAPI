@@ -1,4 +1,5 @@
 import logging
+from time import sleep
 
 from fastapi import status
 from string import ascii_letters
@@ -9,9 +10,9 @@ from pytest_mock import mocker
 from test_main import client
 from tests.utils import create_user
 
+
 def get_random_password():
     return ''.join(choices(ascii_letters, k=10))
-
 
 test_headers ={}
 
@@ -28,6 +29,7 @@ def test_user_login(mocker):
     logger.info(r.json())
     assert r.status_code == status.HTTP_200_OK
     assert 'token' in r.json()
+    test_headers['Authorization'] = r.json()['token']
 
 def test_user_login_incorrect_user(mocker):
     mock_client = mocker.patch("fastapi.Request.client")
@@ -40,6 +42,7 @@ def test_user_login_incorrect_user(mocker):
     assert r.status_code == status.HTTP_404_NOT_FOUND
     assert r_json['detail'] == 'User not found'
 
+
 def test_user_login_incorrect_pass(mocker):
     mock_client = mocker.patch("fastapi.Request.client")
     mock_client.host = '127.0.0.1'
@@ -50,6 +53,7 @@ def test_user_login_incorrect_pass(mocker):
     logger.info(r.json())
     assert r.status_code == status.HTTP_403_FORBIDDEN
     assert r_json['detail'].startswith('Incorrect password')
+    sleep(60)
 
 def test_renew_jwt(mocker):
     mock_client = mocker.patch("fastapi.Request.client")
